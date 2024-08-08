@@ -24,7 +24,7 @@ public class ArrayDeque<T> {
             resize(items.length * 2);
         }
         items[nextFirst] = item;
-        nextFirst = (nextFirst - 1) % items.length;
+        nextFirst = minusOne(nextFirst);
         size += 1;
     }
 
@@ -72,8 +72,8 @@ public class ArrayDeque<T> {
         if (size >= 16 && (size - 1) < 0.25 * items.length) {
             resize(items.length / 2);
         }
-        T removedItem = items[(nextLast - 1) % items.length];
-        nextLast = (nextLast - 1) % items.length;
+        T removedItem = items[minusOne(nextLast)];
+        nextLast = minusOne(nextLast);
         size -= 1;
         return removedItem;
     }
@@ -88,6 +88,15 @@ public class ArrayDeque<T> {
         items = newItems;
         nextFirst = items.length - 1;
         nextLast = size;
+    }
+
+    private int minusOne(int index) {
+        if (index == 0) {
+            return items.length - 1;
+        }
+        else {
+            return index - 1;
+        }
     }
 
 

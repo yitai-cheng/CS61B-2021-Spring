@@ -80,7 +80,7 @@ public class ArrayDeque<T> {
 
     private void resize(int newLength) {
         T[] newItems = (T[]) new Object[newLength];
-        int start = nextFirst + 1;
+        int start = (nextFirst + 1) % items.length;
         for (int i = 0; i < size; i++) {
             newItems[i] = items[start];
             start = (start + 1) % items.length;

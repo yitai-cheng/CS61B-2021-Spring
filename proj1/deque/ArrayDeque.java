@@ -21,7 +21,7 @@ public class ArrayDeque<T> {
 
     public void addFirst(T item) {
         if (size == items.length) {
-            resizeBigger(items.length * 2);
+            resize(items.length * 2);
         }
         items[nextFirst] = item;
         nextFirst = (nextFirst - 1) % items.length;
@@ -30,7 +30,7 @@ public class ArrayDeque<T> {
 
     public void addLast(T item) {
         if (size == items.length) {
-            resizeBigger(items.length * 2);
+            resize(items.length * 2);
         }
         items[nextLast] = item;
         nextLast = (nextLast + 1) % items.length;
@@ -56,8 +56,8 @@ public class ArrayDeque<T> {
         if (size == 0) {
             return null;
         }
-        if (size >= 16 && size - 1 < 0.25 * items.length) {
-            resizeSmaller(items.length / 2);
+        if (size >= 16 && (size - 1) < 0.25 * items.length) {
+            resize(items.length / 2);
         }
         T removedItem = items[(nextFirst + 1) % items.length];
         nextFirst = (nextFirst + 1) % items.length;
@@ -69,8 +69,8 @@ public class ArrayDeque<T> {
         if (size == 0) {
             return null;
         }
-        if (size >= 16 && size - 1 < 0.25 * items.length) {
-            resizeSmaller(items.length / 2);
+        if (size >= 16 && (size - 1) < 0.25 * items.length) {
+            resize(items.length / 2);
         }
         T removedItem = items[(nextLast - 1) % items.length];
         nextLast = (nextLast - 1) % items.length;
@@ -78,15 +78,7 @@ public class ArrayDeque<T> {
         return removedItem;
     }
 
-    private void resizeBigger(int newLength) {
-        T[] newItems = (T[]) new Object[newLength];
-        arraycopy(items, 0, newItems, 0, items.length);
-        items = newItems;
-        nextFirst = items.length - 1;
-        nextLast = size;
-    }
-
-    private void resizeSmaller(int newLength) {
+    private void resize(int newLength) {
         T[] newItems = (T[]) new Object[newLength];
         int start = nextFirst + 1;
         for (int i = 0; i < size; i++) {

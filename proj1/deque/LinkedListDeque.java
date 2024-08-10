@@ -2,7 +2,7 @@ package deque;
 
 import java.util.Iterator;
 
-public class LinkedListDeque<T> {
+public class LinkedListDeque<T> implements Deque<T> {
     private int size;
     private ListNode sentinal;
 
@@ -13,6 +13,7 @@ public class LinkedListDeque<T> {
         this.sentinal.prev = this.sentinal;
     }
 
+    @Override
     public void addFirst(T item) {
         ListNode newNode = new ListNode(item);
         newNode.prev = sentinal;
@@ -22,6 +23,7 @@ public class LinkedListDeque<T> {
         size += 1;
     }
 
+    @Override
     public void addLast(T item) {
         ListNode newNode = new ListNode(item);
         newNode.prev = sentinal.prev;
@@ -31,14 +33,12 @@ public class LinkedListDeque<T> {
         size += 1;
     }
 
-    public boolean isEmpty() {
-        return size() == 0;
-    }
-
+    @Override
     public int size() {
         return size;
     }
 
+    @Override
     public void printDeque() {
         ListNode currentNode = sentinal;
         while (currentNode.next != sentinal) {
@@ -48,6 +48,7 @@ public class LinkedListDeque<T> {
         System.out.println();
     }
 
+    @Override
     public T removeFirst() {
         if (sentinal.next == sentinal) {
             return null;
@@ -59,6 +60,7 @@ public class LinkedListDeque<T> {
         return toBeRemoved.item;
     }
 
+    @Override
     public T removeLast() {
         if (sentinal.next == sentinal) {
             return null;
@@ -70,7 +72,7 @@ public class LinkedListDeque<T> {
         return toBeRemoved.item;
     }
 
-
+    @Override
     public T get(int index) {
         if (index >= size) {
             return null;
@@ -102,8 +104,15 @@ public class LinkedListDeque<T> {
 
     private class LinkedListIterator implements Iterator<T> {
         private int index;
-        public LinkedListIterator() { index = 0; }
-        public boolean hasNext() { return index < size; }
+
+        public LinkedListIterator() {
+            index = 0;
+        }
+
+        public boolean hasNext() {
+            return index < size;
+        }
+
         public T next() {
             T returnItem = get(index);
             index += 1;

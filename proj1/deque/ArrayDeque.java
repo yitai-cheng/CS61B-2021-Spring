@@ -2,7 +2,7 @@ package deque;
 
 import static java.lang.System.arraycopy;
 
-public class ArrayDeque<T> {
+public class ArrayDeque<T> implements Deque<T> {
     private int size;
     private T[] items;
     private int nextFirst;
@@ -15,10 +15,12 @@ public class ArrayDeque<T> {
         nextLast = size;
     }
 
+    @Override
     public T get(int i) {
         return items[(nextFirst + 1 + i) % items.length];
     }
 
+    @Override
     public void addFirst(T item) {
         if (size == items.length) {
             resize(items.length * 2);
@@ -28,6 +30,7 @@ public class ArrayDeque<T> {
         size += 1;
     }
 
+    @Override
     public void addLast(T item) {
         if (size == items.length) {
             resize(items.length * 2);
@@ -37,14 +40,12 @@ public class ArrayDeque<T> {
         size += 1;
     }
 
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
+    @Override
     public int size() {
         return size;
     }
 
+    @Override
     public void printDeque() {
         for (int i = 0; i < size; i++) {
             System.out.print(get(i) + " ");
@@ -52,6 +53,7 @@ public class ArrayDeque<T> {
         System.out.println();
     }
 
+    @Override
     public T removeFirst() {
         if (size == 0) {
             return null;
@@ -65,6 +67,7 @@ public class ArrayDeque<T> {
         return removedItem;
     }
 
+    @Override
     public T removeLast() {
         if (size == 0) {
             return null;
@@ -93,8 +96,7 @@ public class ArrayDeque<T> {
     private int minusOne(int index) {
         if (index == 0) {
             return items.length - 1;
-        }
-        else {
+        } else {
             return index - 1;
         }
     }

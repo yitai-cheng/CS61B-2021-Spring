@@ -98,7 +98,6 @@ public class LinkedListDeque<T> implements Deque<T> {
         return getRecursiveHelper(index - 1, p.next);
     }
 
-    @Override
     public Iterator<T> iterator() {
         return new LinkedListIterator();
     }
@@ -125,7 +124,8 @@ public class LinkedListDeque<T> implements Deque<T> {
         if (this == o) {
             return true;
         }
-        if (o instanceof LinkedListDeque<?> otherLinkedList) {
+        if (o instanceof LinkedListDeque<?>) {
+            ArrayDeque<?> otherLinkedList = (ArrayDeque<?>) o;
             if (this.size() != otherLinkedList.size()) {
                 return false;
             }

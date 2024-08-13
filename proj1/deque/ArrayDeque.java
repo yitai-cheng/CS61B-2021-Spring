@@ -101,7 +101,6 @@ public class ArrayDeque<T> implements Deque<T> {
         }
     }
 
-    @Override
     public Iterator<T> iterator() {
         return new ArrayDequeIterator();
     }
@@ -129,7 +128,8 @@ public class ArrayDeque<T> implements Deque<T> {
         if (this == o) {
             return true;
         }
-        if (o instanceof ArrayDeque<?> otherArrayDeque) {
+        if (o instanceof ArrayDeque<?>) {
+            ArrayDeque<?> otherArrayDeque = (ArrayDeque<?>) o;
             if (this.size() != otherArrayDeque.size()) {
                 return false;
             }

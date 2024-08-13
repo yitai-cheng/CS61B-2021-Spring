@@ -145,4 +145,18 @@ public class ArrayDequeTest {
 
         }
     }
+    @Test
+    public void iteratorTest() {
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+        int[] ans = {1, 2, 3, 4};
+        ad.addLast(1);
+        ad.addLast(2);
+        ad.addLast(3);
+        ad.addLast(4);
+        int i = 0;
+        for (int item: ad) {
+            assertEquals(ans[i], item);
+            i += 1;
+        }
+    }
 }

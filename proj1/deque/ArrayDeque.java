@@ -1,6 +1,6 @@
 package deque;
 
-import static java.lang.System.arraycopy;
+import java.util.Iterator;
 
 public class ArrayDeque<T> implements Deque<T> {
     private int size;
@@ -101,5 +101,47 @@ public class ArrayDeque<T> implements Deque<T> {
         }
     }
 
+    @Override
+    public Iterator<T> iterator() {
+        return new ArrayDequeIterator();
+    }
+
+    private class ArrayDequeIterator implements Iterator<T> {
+        private int index;
+
+        public ArrayDequeIterator() {
+            index = 0;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < size();
+        }
+
+        @Override
+        public T next() {
+            return get(index);
+        }
+    }
+
+    //    why can't I use @override here?
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o instanceof ArrayDeque<?> otherArrayDeque) {
+            if (this.size() != otherArrayDeque.size()) {
+                return false;
+            }
+            for (int i = 0; i < size(); i++) {
+                if (!this.get(i).equals(otherArrayDeque.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+
+    }
 
 }

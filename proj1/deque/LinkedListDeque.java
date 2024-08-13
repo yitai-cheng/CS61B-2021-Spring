@@ -98,6 +98,7 @@ public class LinkedListDeque<T> implements Deque<T> {
         return getRecursiveHelper(index - 1, p.next);
     }
 
+    @Override
     public Iterator<T> iterator() {
         return new LinkedListIterator();
     }
@@ -120,24 +121,22 @@ public class LinkedListDeque<T> implements Deque<T> {
         }
     }
 
-
     public boolean equals(Object o) {
-        if (!(o instanceof LinkedListDeque) || ((LinkedListDeque<?>) o).size() != size()) {
-            return false;
-        }
-        if (isEmpty()) {
+        if (this == o) {
             return true;
         }
-        ListNode currentNode = sentinal.next;
-        ListNode currentONode = (ListNode) ((LinkedListDeque<?>) o).sentinal;
-        while (currentNode != sentinal) {
-            if (!currentNode.item.equals(currentONode.item)) {
+        if (o instanceof LinkedListDeque<?> otherLinkedList) {
+            if (this.size() != otherLinkedList.size()) {
                 return false;
             }
-            currentNode = currentNode.next;
-            currentONode = currentONode.next;
+            for (int i = 0; i < size(); i++) {
+                if (!this.get(i).equals(otherLinkedList.get(i))) {
+                    return false;
+                }
+            }
+            return true;
         }
-        return true;
+        return false;
     }
 
     public class ListNode {

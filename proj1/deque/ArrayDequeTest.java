@@ -75,8 +75,8 @@ public class ArrayDequeTest {
     /* Check if you can create ArrayDeques with different parameterized types*/
     public void multipleParamTest() {
 
-        ArrayDeque<String>  lld1 = new ArrayDeque<String>();
-        ArrayDeque<Double>  lld2 = new ArrayDeque<Double>();
+        ArrayDeque<String> lld1 = new ArrayDeque<String>();
+        ArrayDeque<Double> lld2 = new ArrayDeque<Double>();
         ArrayDeque<Boolean> lld3 = new ArrayDeque<Boolean>();
 
         lld1.addFirst("string");
@@ -86,6 +86,7 @@ public class ArrayDequeTest {
         double d = lld2.removeFirst();
         boolean b = lld3.removeFirst();
     }
+
     @Test
     /* check if null is return when removing from an empty ArrayDeque. */
     public void emptyNullReturnTest() {
@@ -145,6 +146,7 @@ public class ArrayDequeTest {
 
         }
     }
+
     @Test
     public void iteratorTest() {
         ArrayDeque<Integer> ad = new ArrayDeque<>();
@@ -154,9 +156,25 @@ public class ArrayDequeTest {
         ad.addLast(3);
         ad.addLast(4);
         int i = 0;
-        for (int item: ad) {
+        for (int item : ad) {
             assertEquals(ans[i], item);
             i += 1;
         }
+    }
+
+    @Test
+    public void equalTest() {
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+        LinkedListDeque<Integer> lkd = new LinkedListDeque<>();
+        int[] ans = {1, 2, 3, 4};
+        ad.addLast(1);
+        ad.addLast(2);
+        ad.addLast(3);
+        ad.addLast(4);
+        lkd.addLast(1);
+        lkd.addLast(2);
+        lkd.addLast(3);
+        lkd.addLast(4);
+        assertTrue(ad.equals(lkd));
     }
 }

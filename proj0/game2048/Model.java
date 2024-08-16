@@ -5,7 +5,7 @@ import java.util.Observable;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author Yitai Cheng
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -111,9 +111,6 @@ public class Model extends Observable {
         changed = false;
         int boardSize = board.size();
         boolean[][] isMerged = new boolean[boardSize][boardSize];
-        // TODO: Modify this.board (and perhaps this.score) to account
-        // for the tilt to the Side SIDE. If the board changed, set the
-        // changed local variable to true.
         board.setViewingPerspective(side);
         for (int col = 0; col < boardSize; col += 1) {
             int uppermostEmptySpaceRow = boardSize;

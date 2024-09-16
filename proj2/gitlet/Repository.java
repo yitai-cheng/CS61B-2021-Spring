@@ -63,8 +63,8 @@ public class Repository {
         Commit initialCommit = new Commit("A Gitlet version-control system already exists in the current directory", new Date(0));
         HEAD = currentBranch;
         writeContents(HEAD_FILE, HEAD);
-
-        String sha1Id = sha1(initialCommit);
+// sha1 bug.
+        String sha1Id = sha1(serialize(initialCommit));
         branchHeadMap.put(currentBranch, sha1Id);
         writeObject(BRANCH_FILE, branchHeadMap);
         writeObject(join(COMMIT_DIR, sha1Id), initialCommit);

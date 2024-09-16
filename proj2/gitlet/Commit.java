@@ -1,16 +1,19 @@
 package gitlet;
 
-// TODO: any imports you need here
+import java.io.File;
+import java.io.Serializable;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
-import java.util.Date; // TODO: You'll likely use this in this class
+import static gitlet.Utils.sha1;
 
-/** Represents a gitlet commit object.
- *  TODO: It's a good idea to give a description here of what else this Class
- *  does at a high level.
+/**
+ * Represents a gitlet commit object.
  *
- *  @author TODO
+ * @author Yitai Cheng
  */
-public class Commit {
+public class Commit implements Serializable {
     /**
      * TODO: add instance variables here.
      *
@@ -19,8 +22,60 @@ public class Commit {
      * variable is used. We've provided one example for `message`.
      */
 
-    /** The message of this Commit. */
+    /**
+     * The message of this Commit.
+     */
     private String message;
+    /**
+     * The timestamp of this Commit.
+     */
+    private Date timestamp;
+    private Map<String, String> nameToBlobMapping;
+    private String parentCommitId;
+    private String secondParentCommitId;
+    private transient Commit parentCommit;
+    private transient Commit secondParentCommit;
 
-    /* TODO: fill in the rest of this class. */
+
+    public Commit(String message, Date timestamp) {
+        this.message = message;
+        this.timestamp = timestamp;
+        this.nameToBlobMapping = new HashMap<>();
+    }
+
+    public Commit(String message, Date timestamp, Map<String, String> nameToBlobMapping, String parentCommitId, Commit parentCommit) {
+        this.message = message;
+        this.timestamp = timestamp;
+        this.nameToBlobMapping = nameToBlobMapping;
+        this.parentCommitId = parentCommitId;
+        this.parentCommit = parentCommit;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public Date getTimestamp() {
+        return timestamp;
+    }
+
+    public Map<String, String> getNameToBlobMapping() {
+        return nameToBlobMapping;
+    }
+
+    public Commit getParentCommit() {
+        return parentCommit;
+    }
+
+    public String getParentCommitId() {
+        return parentCommitId;
+    }
+
+    public String getSecondParentCommitId() {
+        return secondParentCommitId;
+    }
+
+    public Commit getSecondParentCommit() {
+        return secondParentCommit;
+    }
 }

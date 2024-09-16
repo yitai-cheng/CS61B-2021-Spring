@@ -33,8 +33,7 @@ public class CapersRepository {
      *    - story -- file containing the current story
      */
     public static void setupPersistence() {
-        File capersDirectory = new File(".capers");
-        capersDirectory.mkdir();
+        CAPERS_FOLDER.mkdir();
         File dogsDirectory = new File(CAPERS_FOLDER,"dogs");
         dogsDirectory.mkdir();
         File storyFile = new File(CAPERS_FOLDER,"story.txt");

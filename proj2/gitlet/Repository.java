@@ -36,7 +36,6 @@ public class Repository {
     public static final File STAGING_DIR = join(GITLET_DIR, "staging-area");
     public static final File STAGING_ADDITION = join(STAGING_DIR, "staged4addition");
     public static final File STAGING_REMOVAL = join(STAGING_DIR, "staged4removal");
-    public static String currentBranch = null;
     public static String HEAD = "";
     public static TreeMap<String, String> branchHeadMap = new TreeMap<>();
     public static TreeMap<String, String> staged4AdditionMap = new TreeMap<>();
@@ -58,14 +57,14 @@ public class Repository {
         COMMIT_DIR.mkdir();
         BLOB_DIR.mkdir();
         STAGING_DIR.mkdir();
+        writeObject(STAGING_ADDITION, staged4AdditionMap);
+        writeObject(STAGING_REMOVAL, staged4RemovalMap);
         // create initial commit
-        currentBranch = "master";
-        Commit initialCommit = new Commit("A Gitlet version-control system already exists in the current directory", new Date(0));
-        HEAD = currentBranch;
+        Commit initialCommit = new Commit("initial commit", new Date(0));
+        HEAD = "master";
         writeContents(HEAD_FILE, HEAD);
-// sha1 bug.
         String sha1Id = sha1(serialize(initialCommit));
-        branchHeadMap.put(currentBranch, sha1Id);
+        branchHeadMap.put(HEAD, sha1Id);
         writeObject(BRANCH_FILE, branchHeadMap);
         writeObject(join(COMMIT_DIR, sha1Id), initialCommit);
     }
@@ -126,7 +125,7 @@ public class Repository {
 
         // save the new commit
         Commit newCommit = new Commit(message, new Date(), nameToBlobMapping, currentCommitId, currentCommit);
-        String newCommitId = sha1(newCommit);
+        String newCommitId = sha1(serialize(newCommit));
         writeObject(join(COMMIT_DIR, newCommitId), newCommit);
 
         // let the head pointer points to the new commit
@@ -157,23 +156,21 @@ public class Repository {
     public static void log() {
         HEAD = readContentsAsString(HEAD_FILE);
         String currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
-        Commit currentCommit = readObject(join(COMMIT_DIR, currentCommitId), Commit.class);
-        while (currentCommit != null) {
+        while (currentCommitId != null) {
+            Commit currentCommit = readObject(join(COMMIT_DIR, currentCommitId), Commit.class);
             System.out.println("===");
             System.out.println("commit " + currentCommitId);
             if (currentCommit.getSecondParentCommit() != null) {
                 System.out.println("Merge: " + currentCommit.getParentCommitId().substring(0, 8) + " " + currentCommit.getSecondParentCommitId().substring(0, 8));
             }
-            Formatter formatter = new Formatter();
+            Formatter formatter = new Formatter(Locale.US);
             Date currentTimeStamp = currentCommit.getTimestamp();
-            String formattedTimeStamp = String.valueOf(formatter.format("%ta %tb %td %tT %tY %tz", currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp));
+            String formattedTimeStamp = String.valueOf(formatter.format("%ta %tb %te %tT %tY %tz", currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp));
             System.out.println("Date: " + formattedTimeStamp);
             formatter.close();
             System.out.println(currentCommit.getMessage());
             System.out.println();
-//            currentCommit = currentCommit.getParentCommit();
             currentCommitId = currentCommit.getParentCommitId();
-            currentCommit = readObject(join(COMMIT_DIR, currentCommitId), Commit.class);
         }
     }
 
@@ -279,7 +276,7 @@ public class Repository {
             System.out.println("File does not exist in that commit.");
             System.exit(0);
         }
-        writeContents(join(CWD, fileName), readContentsAsString(join(CWD, nameToBlobMapping.get(fileName))));
+        writeContents(join(CWD, fileName), readContentsAsString(join(BLOB_DIR, nameToBlobMapping.get(fileName))));
     }
 
     public static void checkoutBranch(String branchName) {

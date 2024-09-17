@@ -90,7 +90,7 @@ public class Main {
     }
 
     public static void validateGitletInitialization() {
-        if (!GITLET_DIR.isFile()) {
+        if (!GITLET_DIR.isDirectory()) {
             System.out.println("Not in an initialized Gitlet directory.");
             System.exit(0);
         }

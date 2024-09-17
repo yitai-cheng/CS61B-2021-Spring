@@ -66,6 +66,9 @@ public class Commit implements Serializable {
     public Commit getParentCommit() {
         return parentCommit;
     }
+    public Commit getSecondParentCommit() {
+        return secondParentCommit;
+    }
 
     public String getParentCommitId() {
         return parentCommitId;
@@ -75,7 +78,4 @@ public class Commit implements Serializable {
         return secondParentCommitId;
     }
 
-    public Commit getSecondParentCommit() {
-        return secondParentCommit;
-    }
 }

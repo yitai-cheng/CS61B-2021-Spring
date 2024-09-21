@@ -252,9 +252,9 @@ public class Repository {
             }
         }
         for (String trackedFile : nameToBlobMapping.keySet()) {
-            if (!staged4AdditionMap.containsKey(trackedFile) && !sha1(readContentsAsString(join(CWD, trackedFile))).equals(nameToBlobMapping.get(trackedFile))) {
+            if (filesInWorkingDir.contains(trackedFile) && !staged4AdditionMap.containsKey(trackedFile) && !sha1(readContentsAsString(join(CWD, trackedFile))).equals(nameToBlobMapping.get(trackedFile))) {
                 System.out.println(trackedFile + " (modified)");
-            } else if (!staged4RemovalMap.containsKey(trackedFile) && !filesInWorkingDir.contains(trackedFile)) {
+            } else if (!filesInWorkingDir.contains(trackedFile) && !staged4RemovalMap.containsKey(trackedFile)) {
                 System.out.println(trackedFile + " (deleted)");
             }
         }

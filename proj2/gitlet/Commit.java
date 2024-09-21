@@ -51,6 +51,14 @@ public class Commit implements Serializable {
         this.parentCommit = parentCommit;
     }
 
+    public Commit(String message, Date timestamp, Map<String, String> nameToBlobMapping, String parentCommitId, String secondParentCommitId) {
+        this.message = message;
+        this.timestamp = timestamp;
+        this.nameToBlobMapping = nameToBlobMapping;
+        this.parentCommitId = parentCommitId;
+        this.secondParentCommitId = secondParentCommitId;
+    }
+
     public String getMessage() {
         return message;
     }

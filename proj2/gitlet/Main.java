@@ -43,7 +43,8 @@ public class Main {
                 Repository.commit(message);
                 break;
             case "rm":
-//                validateArgs();
+                validateArgs(args, 2);
+                validateGitletInitialization();
                 Repository.remove(args[1]);
                 break;
             case "log":
@@ -52,15 +53,18 @@ public class Main {
                 Repository.log();
                 break;
             case "global-log":
-//                validateArgs();
+                validateArgs(args, 1);
+                validateGitletInitialization();
                 Repository.logAllCommits();
                 break;
             case "find":
-//                validateArgs();
+                validateArgs(args, 2);
+                validateGitletInitialization();
                 Repository.find(args[1]);
                 break;
             case "status":
-//                validateArgs();
+                validateArgs(args, 1);
+                validateGitletInitialization();
                 Repository.status();
                 break;
             case "checkout":
@@ -75,6 +79,26 @@ public class Main {
                     System.out.println("Incorrect operands.");
                     System.exit(0);
                 }
+                break;
+            case "branch":
+                validateArgs(args, 2);
+                validateGitletInitialization();
+                Repository.createBranch(args[1]);
+                break;
+            case "rm-branch":
+                validateArgs(args, 2);
+                validateGitletInitialization();
+                Repository.removeBranch(args[1]);
+                break;
+            case "reset":
+                validateArgs(args, 2);
+                validateGitletInitialization();
+                Repository.reset(args[1]);
+                break;
+            case "merge":
+                validateArgs(args, 2);
+                validateGitletInitialization();
+                Repository.merge(args[1]);
                 break;
             default:
                 System.out.println("No command with that name exists.");

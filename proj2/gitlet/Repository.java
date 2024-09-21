@@ -109,7 +109,6 @@ public class Repository {
         String currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
         Commit currentCommit = readObject(join(COMMIT_DIR, currentCommitId), Commit.class);
         Map<String, String> nameToBlobMapping = currentCommit.getNameToBlobMapping();
-
         // update the current commit
         for (Map.Entry<String, String> entry : staged4AdditionMap.entrySet()) {
             nameToBlobMapping.put(entry.getKey(), entry.getValue());
@@ -117,6 +116,13 @@ public class Repository {
         for (Map.Entry<String, String> entry : staged4RemovalMap.entrySet()) {
             nameToBlobMapping.remove(entry.getKey());
         }
+        Commit newCommit = new Commit(message, new Date(), nameToBlobMapping, currentCommitId, currentCommit);
+        commitHelper(newCommit);
+    }
+
+
+    private static void commitHelper(Commit newCommit) {
+
         // clean the staging area
         staged4AdditionMap.clear();
         staged4RemovalMap.clear();
@@ -124,7 +130,6 @@ public class Repository {
         writeObject(STAGING_REMOVAL, staged4RemovalMap);
 
         // save the new commit
-        Commit newCommit = new Commit(message, new Date(), nameToBlobMapping, currentCommitId, currentCommit);
         String newCommitId = sha1(serialize(newCommit));
         writeObject(join(COMMIT_DIR, newCommitId), newCommit);
 
@@ -160,7 +165,7 @@ public class Repository {
             Commit currentCommit = readObject(join(COMMIT_DIR, currentCommitId), Commit.class);
             System.out.println("===");
             System.out.println("commit " + currentCommitId);
-            if (currentCommit.getSecondParentCommit() != null) {
+            if (currentCommit.getSecondParentCommitId() != null) {
                 System.out.println("Merge: " + currentCommit.getParentCommitId().substring(0, 8) + " " + currentCommit.getSecondParentCommitId().substring(0, 8));
             }
             Formatter formatter = new Formatter(Locale.US);
@@ -180,12 +185,12 @@ public class Repository {
             Commit currentCommit = readObject(join(COMMIT_DIR, commitId), Commit.class);
             System.out.println("===");
             System.out.println("commit " + commitId);
-            if (!currentCommit.getSecondParentCommitId().isEmpty()) {
+            if (currentCommit.getSecondParentCommitId() != null) {
                 System.out.println("Merge: " + currentCommit.getParentCommitId().substring(0, 8) + " " + currentCommit.getSecondParentCommitId().substring(0, 8));
             }
-            Formatter formatter = new Formatter();
+            Formatter formatter = new Formatter(Locale.US);
             Date currentTimeStamp = currentCommit.getTimestamp();
-            String formattedTimeStamp = String.valueOf(formatter.format("%ta %tb %td %tT %tY %tz", currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp));
+            String formattedTimeStamp = String.valueOf(formatter.format("%ta %tb %te %tT %tY %tz", currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp));
             System.out.println("Date: " + formattedTimeStamp);
             formatter.close();
             System.out.println(currentCommit.getMessage());
@@ -195,11 +200,16 @@ public class Repository {
 
     public static void find(String message) {
         List<String> commitIds = plainFilenamesIn(COMMIT_DIR);
+        boolean commitExist = false;
         for (String commitId : commitIds) {
             Commit currentCommit = readObject(join(COMMIT_DIR, commitId), Commit.class);
             if (currentCommit.getMessage().equals(message)) {
+                commitExist = true;
                 System.out.println(commitId);
             }
+        }
+        if (!commitExist) {
+            System.out.println("Found no commit with that message.");
         }
     }
 
@@ -282,18 +292,64 @@ public class Repository {
     public static void checkoutBranch(String branchName) {
         branchHeadMap = readObject(BRANCH_FILE, TreeMap.class);
         HEAD = readContentsAsString(HEAD_FILE);
-        Map<String, String> currentNameToBlobMapping = getCurrentCommitBlob();
         if (!branchHeadMap.containsKey(branchName)) {
             System.out.println("No such branch exists.");
             System.exit(0);
         } else if (branchHeadMap.get(branchName).equals(HEAD)) {
-            System.out.println("No neeed to checkout the current branch.");
+            System.out.println("No need to checkout the current branch.");
             System.exit(0);
         }
         String commitId = branchHeadMap.get(branchName);
+        checkoutByCommitId(commitId);
+        // set the new HEAD to the branch
+        HEAD = branchName;
+        writeContents(HEAD_FILE, HEAD);
+    }
+
+    public static void createBranch(String branchName) {
+        branchHeadMap = readObject(BRANCH_FILE, TreeMap.class);
+        if (branchHeadMap.containsKey(branchName)) {
+            System.out.println("A branch with that name already exists.");
+            System.exit(0);
+        }
+        HEAD = readContentsAsString(HEAD_FILE);
+        branchHeadMap.put(branchName, branchHeadMap.get(HEAD));
+        writeObject(BRANCH_FILE, branchHeadMap);
+    }
+
+    public static void removeBranch(String branchName) {
+        branchHeadMap = readObject(BRANCH_FILE, TreeMap.class);
+        if (!branchHeadMap.containsKey(branchName)) {
+            System.out.println("A branch with that name does not exists.");
+            System.exit(0);
+        }
+        HEAD = readContentsAsString(HEAD_FILE);
+        if (branchName.equals(HEAD)) {
+            System.out.println("Cannot remove the current branch");
+            System.exit(0);
+        }
+        branchHeadMap.remove(branchName);
+        writeObject(BRANCH_FILE, branchHeadMap);
+    }
+
+    public static void reset(String commitId) {
+        if (!join(COMMIT_DIR, commitId).isFile()) {
+            System.out.println("No commit with that id exists.");
+            System.exit(0);
+        }
+        checkoutByCommitId(commitId);
+        HEAD = readContentsAsString(HEAD_FILE);
+        branchHeadMap = readObject(BRANCH_FILE, TreeMap.class);
+        branchHeadMap.put(HEAD, commitId);
+        writeObject(BRANCH_FILE, branchHeadMap);
+    }
+
+    private static void checkoutByCommitId(String commitId) {
         Commit commit = readObject(join(COMMIT_DIR, commitId), Commit.class);
         Map<String, String> checkedOutNameToBlobMapping = commit.getNameToBlobMapping();
+        Map<String, String> currentNameToBlobMapping = getCurrentCommitBlob();
         List<String> filesInWorkingDir = plainFilenamesIn(CWD);
+        staged4AdditionMap = readObject(STAGING_ADDITION, TreeMap.class);
         for (String fileName : filesInWorkingDir) {
             if (!staged4AdditionMap.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName)) {
                 System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
@@ -315,11 +371,152 @@ public class Repository {
         // clear the staging area
         writeObject(STAGING_ADDITION, staged4AdditionMap);
         writeObject(STAGING_REMOVAL, staged4RemovalMap);
-
-        // set the new HEAD to the branch
-        HEAD = branchName;
-        writeContents(HEAD_FILE, HEAD);
-
     }
 
+    public static void merge(String branchName) {
+        staged4AdditionMap = readObject(STAGING_ADDITION, TreeMap.class);
+        staged4RemovalMap = readObject(STAGING_REMOVAL, TreeMap.class);
+        //if there are staged additions or removals present
+        if (!staged4AdditionMap.isEmpty() || !staged4RemovalMap.isEmpty()) {
+            System.out.println("You have uncommitted changes");
+            System.exit(0);
+        }
+        branchHeadMap = readObject(BRANCH_FILE, TreeMap.class);
+        HEAD = readContentsAsString(HEAD_FILE);
+        //if the branch with the given name does not exist
+        if (!branchHeadMap.containsKey(branchName)) {
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        // attempting to merge a branch with itself
+        else if (branchHeadMap.get(branchName).equals(HEAD)) {
+            System.out.println("Cannot merge a branch with itself.");
+            System.exit(0);
+        }
+
+        //if merge will not change the commit
+        String currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
+        Commit currentCommit = readObject(join(COMMIT_DIR, currentCommitId), Commit.class);
+        Map<String, String> currentNameToBlobMapping = currentCommit.getNameToBlobMapping();
+        String tobeMergedCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(branchName);
+        Commit tobeMergedCommit = readObject(join(COMMIT_DIR, tobeMergedCommitId), Commit.class);
+        Map<String, String> tobeMergedNameToBlobMapping = tobeMergedCommit.getNameToBlobMapping();
+        if (currentNameToBlobMapping.equals(tobeMergedNameToBlobMapping)) {
+            System.out.println("No changes added to the commit.");
+            System.exit(0);
+        }
+
+        // If an untracked file in the current commit would be overwritten or deleted by the merge
+        List<String> filesInWorkingDir = plainFilenamesIn(CWD);
+        for (String fileName : filesInWorkingDir) {
+            if (!staged4AdditionMap.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName)) {
+                System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+                System.exit(0);
+            }
+        }
+
+        List<String> currentCommitPath = new ArrayList<>();
+        currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
+        while (currentCommitId != null) {
+            currentCommit = readObject(join(COMMIT_DIR, currentCommitId), Commit.class);
+            currentCommitPath.add(currentCommitId);
+            currentCommitId = currentCommit.getParentCommitId();
+        }
+        currentCommitPath = currentCommitPath.reversed();
+        List<String> tobeMergedCommitPath = new ArrayList<>();
+        tobeMergedCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(branchName);
+        while (tobeMergedCommitId != null) {
+            tobeMergedCommit = readObject(join(COMMIT_DIR, tobeMergedCommitId), Commit.class);
+            tobeMergedCommitPath.add(tobeMergedCommitId);
+            tobeMergedCommitId = tobeMergedCommit.getParentCommitId();
+        }
+        tobeMergedCommitPath = tobeMergedCommitPath.reversed();
+        String latestCommonAncestorCommitId = currentCommitPath.get(0);
+        for (int i = 1; ; i++) {
+            if (!currentCommitPath.get(i).equals(tobeMergedCommitPath.get(i))) {
+                break;
+            }
+            latestCommonAncestorCommitId = currentCommitPath.get(i);
+        }
+        tobeMergedCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(branchName);
+        currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
+        if (latestCommonAncestorCommitId.equals(tobeMergedCommitId)) {
+            System.out.println("Given branch is an ancestor of the current branch.");
+            return;
+        } else if (latestCommonAncestorCommitId.equals(currentCommitId)) {
+            checkoutBranch(branchName);
+            System.out.println("Current branch fast-forwarded.");
+        }
+
+        Commit latestCommonAncestorCommit = readObject(join(COMMIT_DIR, latestCommonAncestorCommitId), Commit.class);
+        Map<String, String> latestCommonAncestorNameToBlobMapping = latestCommonAncestorCommit.getNameToBlobMapping();
+        Set<String> fileNames = new HashSet<>();
+        fileNames.addAll(currentNameToBlobMapping.keySet());
+        fileNames.addAll(tobeMergedNameToBlobMapping.keySet());
+        fileNames.addAll(latestCommonAncestorNameToBlobMapping.keySet());
+        boolean isMergeConflict = false;
+        for (String fileName : fileNames) {
+            if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName)) && latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))) {
+                checkoutFile(tobeMergedCommitId, fileName);
+                add(fileName);
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName)) && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))) {
+                continue;
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName)) && currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+            ) {
+                continue;
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName) && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
+                continue;
+            } else if (!latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
+                continue;
+            } else if (!latestCommonAncestorNameToBlobMapping.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName)) {
+                checkoutFile(tobeMergedCommitId, fileName);
+                add(fileName);
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName)) && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
+                remove(fileName);
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName)) && !currentNameToBlobMapping.containsKey(fileName)) {
+                continue;
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName) &&
+                    !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName)) && !currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+                    || latestCommonAncestorNameToBlobMapping.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName) &&
+                    !latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+                    || latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && !tobeMergedNameToBlobMapping.containsKey(fileName) &&
+                    !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))
+                    || !latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName) &&
+                    !currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+            ) {
+                isMergeConflict = true;
+                String currentFileContent = "";
+                String tobeMergedFileContent = "";
+                if (currentNameToBlobMapping.containsKey(fileName)) {
+                    currentFileContent = currentNameToBlobMapping.get(fileName);
+                }
+                if (tobeMergedNameToBlobMapping.containsKey(fileName)) {
+                    tobeMergedFileContent = tobeMergedNameToBlobMapping.get(fileName);
+                }
+                writeContents(join(CWD, fileName), "<<<<<<< HEAD\n" +
+                        readContentsAsString(join(BLOB_DIR, currentFileContent)) +
+                        "=======\n" +
+                        readContentsAsString(join(BLOB_DIR, tobeMergedFileContent)) +
+                        ">>>>>>>");
+                add(fileName);
+            }
+        }
+        staged4AdditionMap = readObject(STAGING_ADDITION, TreeMap.class);
+        staged4RemovalMap = readObject(STAGING_REMOVAL, TreeMap.class);
+        for (Map.Entry<String, String> entry : staged4AdditionMap.entrySet()) {
+            currentNameToBlobMapping.put(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, String> entry : staged4RemovalMap.entrySet()) {
+            currentNameToBlobMapping.remove(entry.getKey());
+        }
+        Commit newCommit = new Commit("Merged " + branchName + " into " + HEAD, new Date(), currentNameToBlobMapping, currentCommitId, tobeMergedCommitId);
+        commitHelper(newCommit);
+        if (isMergeConflict) {
+            System.out.println("Encountered a merge conflict.");
+        }
+
+    }
 }

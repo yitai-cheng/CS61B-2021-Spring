@@ -422,7 +422,7 @@ public class Repository {
             currentCommitPath.add(currentCommitId);
             currentCommitId = currentCommit.getParentCommitId();
         }
-        currentCommitPath = currentCommitPath.reversed();
+        Collections.reverse(currentCommitPath);
         List<String> tobeMergedCommitPath = new ArrayList<>();
         tobeMergedCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(branchName);
         while (tobeMergedCommitId != null) {
@@ -430,7 +430,7 @@ public class Repository {
             tobeMergedCommitPath.add(tobeMergedCommitId);
             tobeMergedCommitId = tobeMergedCommit.getParentCommitId();
         }
-        tobeMergedCommitPath = tobeMergedCommitPath.reversed();
+        Collections.reverse(tobeMergedCommitPath);
         String latestCommonAncestorCommitId = currentCommitPath.get(0);
         for (int i = 1; ; i++) {
             if (!currentCommitPath.get(i).equals(tobeMergedCommitPath.get(i))) {

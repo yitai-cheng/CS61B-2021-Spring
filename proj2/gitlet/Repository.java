@@ -79,7 +79,11 @@ public class Repository {
         Map<String, String> nameToBlobMapping = getCurrentCommitBlob();
 
         staged4AdditionMap = readObject(STAGING_ADDITION, TreeMap.class);
-
+        staged4RemovalMap = readObject(STAGING_REMOVAL, TreeMap.class);
+        if (staged4RemovalMap.containsKey(fileName)) {
+            staged4RemovalMap.remove(fileName);
+            writeObject(STAGING_REMOVAL, staged4RemovalMap);
+        }
         if (staged4AdditionMap.containsKey(fileName)) {
             if (hashValueOfFileContent.equals(nameToBlobMapping.get(fileName))) {
                 staged4AdditionMap.remove(fileName);
@@ -101,7 +105,7 @@ public class Repository {
     public static void commit(String message) {
         staged4AdditionMap = readObject(STAGING_ADDITION, TreeMap.class);
         staged4RemovalMap = readObject(STAGING_REMOVAL, TreeMap.class);
-        if (staged4AdditionMap.isEmpty()) {
+        if (staged4AdditionMap.isEmpty() && staged4RemovalMap.isEmpty()) {
             System.out.println("No changes added to the commit.");
             System.exit(0);
         }
@@ -166,7 +170,7 @@ public class Repository {
             System.out.println("===");
             System.out.println("commit " + currentCommitId);
             if (currentCommit.getSecondParentCommitId() != null) {
-                System.out.println("Merge: " + currentCommit.getParentCommitId().substring(0, 8) + " " + currentCommit.getSecondParentCommitId().substring(0, 8));
+                System.out.println("Merge: " + currentCommit.getParentCommitId().substring(0, 7) + " " + currentCommit.getSecondParentCommitId().substring(0, 7));
             }
             Formatter formatter = new Formatter(Locale.US);
             Date currentTimeStamp = currentCommit.getTimestamp();
@@ -295,7 +299,7 @@ public class Repository {
         if (!branchHeadMap.containsKey(branchName)) {
             System.out.println("No such branch exists.");
             System.exit(0);
-        } else if (branchHeadMap.get(branchName).equals(HEAD)) {
+        } else if (branchName.equals(HEAD)) {
             System.out.println("No need to checkout the current branch.");
             System.exit(0);
         }
@@ -414,7 +418,7 @@ public class Repository {
                 System.exit(0);
             }
         }
-
+// TODO: finding LCA is not correctly implemented, so merge will not behave correctly.
         List<String> currentCommitPath = new ArrayList<>();
         currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
         while (currentCommitId != null) {
@@ -500,7 +504,7 @@ public class Repository {
                         readContentsAsString(join(BLOB_DIR, currentFileContent)) +
                         "=======\n" +
                         readContentsAsString(join(BLOB_DIR, tobeMergedFileContent)) +
-                        ">>>>>>>");
+                        ">>>>>>>\n");
                 add(fileName);
             }
         }
@@ -512,7 +516,7 @@ public class Repository {
         for (Map.Entry<String, String> entry : staged4RemovalMap.entrySet()) {
             currentNameToBlobMapping.remove(entry.getKey());
         }
-        Commit newCommit = new Commit("Merged " + branchName + " into " + HEAD, new Date(), currentNameToBlobMapping, currentCommitId, tobeMergedCommitId);
+        Commit newCommit = new Commit("Merged " + branchName + " into " + HEAD + ".", new Date(), currentNameToBlobMapping, currentCommitId, tobeMergedCommitId);
         commitHelper(newCommit);
         if (isMergeConflict) {
             System.out.println("Encountered a merge conflict.");

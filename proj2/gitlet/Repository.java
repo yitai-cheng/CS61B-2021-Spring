@@ -1,8 +1,6 @@
 package gitlet;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
 import java.util.*;
 
 import static gitlet.Utils.*;
@@ -36,12 +34,13 @@ public class Repository {
     public static final File STAGING_DIR = join(GITLET_DIR, "staging-area");
     public static final File STAGING_ADDITION = join(STAGING_DIR, "staged4addition");
     public static final File STAGING_REMOVAL = join(STAGING_DIR, "staged4removal");
-    public static String HEAD = "";
-    public static TreeMap<String, String> branchHeadMap = new TreeMap<>();
-    public static TreeMap<String, String> staged4AdditionMap = new TreeMap<>();
-    public static TreeMap<String, String> staged4RemovalMap = new TreeMap<>();
+    public static final File COMMIT_GRAPH = join(GITLET_DIR, "commit-graph");
+    private static String HEAD = "";
+    private static TreeMap<String, String> branchHeadMap = new TreeMap<>();
+    private static TreeMap<String, String> staged4AdditionMap = new TreeMap<>();
+    private static TreeMap<String, String> staged4RemovalMap = new TreeMap<>();
+    private static CommitGraph commitGraph;
 
-    /* TODO: fill in the rest of this class. */
     private static Map<String, String> getCurrentCommitBlob() {
         HEAD = readContentsAsString(HEAD_FILE);
         String currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
@@ -67,6 +66,8 @@ public class Repository {
         branchHeadMap.put(HEAD, sha1Id);
         writeObject(BRANCH_FILE, branchHeadMap);
         writeObject(join(COMMIT_DIR, sha1Id), initialCommit);
+        commitGraph = new CommitGraph(sha1Id);
+        writeObject(COMMIT_GRAPH, commitGraph);
     }
 
     public static void add(String fileName) {
@@ -122,6 +123,10 @@ public class Repository {
         }
         Commit newCommit = new Commit(message, new Date(), nameToBlobMapping, currentCommitId, currentCommit);
         commitHelper(newCommit);
+        commitGraph = readObject(COMMIT_GRAPH, CommitGraph.class);
+        commitGraph.addVertex(sha1(serialize(newCommit)));
+        commitGraph.addEdge(sha1(serialize(newCommit)), currentCommitId);
+        writeObject(COMMIT_GRAPH, commitGraph);
     }
 
 
@@ -190,11 +195,17 @@ public class Repository {
             System.out.println("===");
             System.out.println("commit " + commitId);
             if (currentCommit.getSecondParentCommitId() != null) {
-                System.out.println("Merge: " + currentCommit.getParentCommitId().substring(0, 8) + " " + currentCommit.getSecondParentCommitId().substring(0, 8));
+                System.out.println("Merge: "
+                        + currentCommit.getParentCommitId().substring(0, 8)
+                        + " "
+                        + currentCommit.getSecondParentCommitId().substring(0, 8));
             }
             Formatter formatter = new Formatter(Locale.US);
             Date currentTimeStamp = currentCommit.getTimestamp();
-            String formattedTimeStamp = String.valueOf(formatter.format("%ta %tb %te %tT %tY %tz", currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp));
+            String formattedTimeStamp = String.valueOf(
+                    formatter.format("%ta %tb %te %tT %tY %tz",
+                    currentTimeStamp, currentTimeStamp, currentTimeStamp,
+                            currentTimeStamp, currentTimeStamp, currentTimeStamp));
             System.out.println("Date: " + formattedTimeStamp);
             formatter.close();
             System.out.println(currentCommit.getMessage());
@@ -249,14 +260,15 @@ public class Repository {
         Map<String, String> nameToBlobMapping = getCurrentCommitBlob();
         System.out.println("=== Modifications Not Staged For Commit ===");
         for (String stagedFileName : staged4AdditionMap.keySet()) {
-            if (!sha1(readContentsAsString(join(CWD, stagedFileName))).equals(staged4AdditionMap.get(stagedFileName))) {
-                System.out.println(stagedFileName + " (modified)");
-            } else if (!filesInWorkingDir.contains(stagedFileName)) {
+            if (!filesInWorkingDir.contains(stagedFileName)) {
                 System.out.println(stagedFileName + " (deleted)");
+            } else if (!sha1(readContentsAsString(join(CWD, stagedFileName))).equals(staged4AdditionMap.get(stagedFileName))) {
+                System.out.println(stagedFileName + " (modified)");
             }
         }
         for (String trackedFile : nameToBlobMapping.keySet()) {
-            if (filesInWorkingDir.contains(trackedFile) && !staged4AdditionMap.containsKey(trackedFile) && !sha1(readContentsAsString(join(CWD, trackedFile))).equals(nameToBlobMapping.get(trackedFile))) {
+            if (filesInWorkingDir.contains(trackedFile) && !staged4AdditionMap.containsKey(trackedFile)
+                    && !sha1(readContentsAsString(join(CWD, trackedFile))).equals(nameToBlobMapping.get(trackedFile))) {
                 System.out.println(trackedFile + " (modified)");
             } else if (!filesInWorkingDir.contains(trackedFile) && !staged4RemovalMap.containsKey(trackedFile)) {
                 System.out.println(trackedFile + " (deleted)");
@@ -373,6 +385,8 @@ public class Repository {
             }
         }
         // clear the staging area
+        staged4AdditionMap.clear();
+        staged4RemovalMap.clear();
         writeObject(STAGING_ADDITION, staged4AdditionMap);
         writeObject(STAGING_REMOVAL, staged4RemovalMap);
     }
@@ -393,7 +407,7 @@ public class Repository {
             System.exit(0);
         }
         // attempting to merge a branch with itself
-        else if (branchHeadMap.get(branchName).equals(HEAD)) {
+        else if (branchName.equals(HEAD)) {
             System.out.println("Cannot merge a branch with itself.");
             System.exit(0);
         }
@@ -418,30 +432,36 @@ public class Repository {
                 System.exit(0);
             }
         }
-// TODO: finding LCA is not correctly implemented, so merge will not behave correctly.
-        List<String> currentCommitPath = new ArrayList<>();
-        currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
-        while (currentCommitId != null) {
-            currentCommit = readObject(join(COMMIT_DIR, currentCommitId), Commit.class);
-            currentCommitPath.add(currentCommitId);
-            currentCommitId = currentCommit.getParentCommitId();
+        String latestCommonAncestorCommitId = "";
+        commitGraph = readObject(COMMIT_GRAPH, CommitGraph.class);
+
+        Set<Integer> bfsPath = new HashSet<>();
+        Queue<Integer> fringe =
+                new LinkedList<>();
+        fringe.offer(commitGraph.getVertexId(currentCommitId));
+        while (!fringe.isEmpty()) {
+            int v = fringe.poll();
+            bfsPath.add(v);
+            for (int w : commitGraph.getAdj(v)) {
+                fringe.offer(w);
+            }
         }
-        Collections.reverse(currentCommitPath);
-        List<String> tobeMergedCommitPath = new ArrayList<>();
-        tobeMergedCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(branchName);
-        while (tobeMergedCommitId != null) {
-            tobeMergedCommit = readObject(join(COMMIT_DIR, tobeMergedCommitId), Commit.class);
-            tobeMergedCommitPath.add(tobeMergedCommitId);
-            tobeMergedCommitId = tobeMergedCommit.getParentCommitId();
-        }
-        Collections.reverse(tobeMergedCommitPath);
-        String latestCommonAncestorCommitId = currentCommitPath.get(0);
-        for (int i = 1; ; i++) {
-            if (!currentCommitPath.get(i).equals(tobeMergedCommitPath.get(i))) {
+
+        Queue<Integer> secondFringe =
+                new LinkedList<>();
+        secondFringe.offer(commitGraph.getVertexId(tobeMergedCommitId));
+        while (!secondFringe.isEmpty()) {
+            int v = secondFringe.poll();
+            if (bfsPath.contains(v)) {
+                latestCommonAncestorCommitId = commitGraph.getCommitId(v);
                 break;
             }
-            latestCommonAncestorCommitId = currentCommitPath.get(i);
+            for (int w : commitGraph.getAdj(v)) {
+                secondFringe.offer(w);
+            }
         }
+
+
         tobeMergedCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(branchName);
         currentCommitId = (String) readObject(BRANCH_FILE, TreeMap.class).get(HEAD);
         if (latestCommonAncestorCommitId.equals(tobeMergedCommitId)) {
@@ -450,6 +470,7 @@ public class Repository {
         } else if (latestCommonAncestorCommitId.equals(currentCommitId)) {
             checkoutBranch(branchName);
             System.out.println("Current branch fast-forwarded.");
+            return;
         }
 
         Commit latestCommonAncestorCommit = readObject(join(COMMIT_DIR, latestCommonAncestorCommitId), Commit.class);
@@ -460,51 +481,79 @@ public class Repository {
         fileNames.addAll(latestCommonAncestorNameToBlobMapping.keySet());
         boolean isMergeConflict = false;
         for (String fileName : fileNames) {
-            if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName)
-                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName)) && latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))) {
+            if (latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && currentNameToBlobMapping.containsKey(fileName)
+                    && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+                    && latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))) {
                 checkoutFile(tobeMergedCommitId, fileName);
                 add(fileName);
-            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName)
-                    && latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName)) && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))) {
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && currentNameToBlobMapping.containsKey(fileName)
+                    && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))) {
                 continue;
-            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName)
-                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName)) && currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && currentNameToBlobMapping.containsKey(fileName)
+                    && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))
+                    && currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
             ) {
                 continue;
-            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName) && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && !currentNameToBlobMapping.containsKey(fileName)
+                    && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
                 continue;
-            } else if (!latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
+            } else if (!latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && currentNameToBlobMapping.containsKey(fileName)
+                    && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
                 continue;
-            } else if (!latestCommonAncestorNameToBlobMapping.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName)) {
+            } else if (!latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && !currentNameToBlobMapping.containsKey(fileName)
+                    && tobeMergedNameToBlobMapping.containsKey(fileName)) {
                 checkoutFile(tobeMergedCommitId, fileName);
                 add(fileName);
-            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName)) && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))
+                    && !tobeMergedNameToBlobMapping.containsKey(fileName)) {
                 remove(fileName);
-            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName)) && !currentNameToBlobMapping.containsKey(fileName)) {
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+                    && !currentNameToBlobMapping.containsKey(fileName)) {
                 continue;
-            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName) &&
-                    !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName)) && !currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
-                    || latestCommonAncestorNameToBlobMapping.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName) &&
-                    !latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
-                    || latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && !tobeMergedNameToBlobMapping.containsKey(fileName) &&
-                    !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))
-                    || !latestCommonAncestorNameToBlobMapping.containsKey(fileName) && currentNameToBlobMapping.containsKey(fileName) && tobeMergedNameToBlobMapping.containsKey(fileName) &&
-                    !currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+            } else if (latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && currentNameToBlobMapping.containsKey(fileName)
+                    && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))
+                    && !currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+                    || latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && !currentNameToBlobMapping.containsKey(fileName)
+                    && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
+                    || latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && currentNameToBlobMapping.containsKey(fileName)
+                    && !tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && !latestCommonAncestorNameToBlobMapping.get(fileName).equals(currentNameToBlobMapping.get(fileName))
+                    || !latestCommonAncestorNameToBlobMapping.containsKey(fileName)
+                    && currentNameToBlobMapping.containsKey(fileName)
+                    && tobeMergedNameToBlobMapping.containsKey(fileName)
+                    && !currentNameToBlobMapping.get(fileName).equals(tobeMergedNameToBlobMapping.get(fileName))
             ) {
                 isMergeConflict = true;
                 String currentFileContent = "";
                 String tobeMergedFileContent = "";
                 if (currentNameToBlobMapping.containsKey(fileName)) {
-                    currentFileContent = currentNameToBlobMapping.get(fileName);
+                    currentFileContent = readContentsAsString(join(BLOB_DIR, currentNameToBlobMapping.get(fileName)));
                 }
                 if (tobeMergedNameToBlobMapping.containsKey(fileName)) {
-                    tobeMergedFileContent = tobeMergedNameToBlobMapping.get(fileName);
+                    tobeMergedFileContent = readContentsAsString(join(BLOB_DIR, tobeMergedNameToBlobMapping.get(fileName)));
                 }
-                writeContents(join(CWD, fileName), "<<<<<<< HEAD\n" +
-                        readContentsAsString(join(BLOB_DIR, currentFileContent)) +
-                        "=======\n" +
-                        readContentsAsString(join(BLOB_DIR, tobeMergedFileContent)) +
-                        ">>>>>>>\n");
+                writeContents(join(CWD, fileName), "<<<<<<< HEAD\n"
+                        + currentFileContent
+                        + "=======\n"
+                        + tobeMergedFileContent
+                        + ">>>>>>>\n");
                 add(fileName);
             }
         }
@@ -516,11 +565,17 @@ public class Repository {
         for (Map.Entry<String, String> entry : staged4RemovalMap.entrySet()) {
             currentNameToBlobMapping.remove(entry.getKey());
         }
-        Commit newCommit = new Commit("Merged " + branchName + " into " + HEAD + ".", new Date(), currentNameToBlobMapping, currentCommitId, tobeMergedCommitId);
+        Commit newCommit = new Commit(
+                "Merged " + branchName + " into " + HEAD + ".",
+                new Date(), currentNameToBlobMapping, currentCommitId, tobeMergedCommitId);
         commitHelper(newCommit);
         if (isMergeConflict) {
             System.out.println("Encountered a merge conflict.");
         }
+        commitGraph.addVertex(sha1(serialize(newCommit)));
+        commitGraph.addEdge(sha1(serialize(newCommit)), currentCommitId);
+        commitGraph.addEdge(sha1(serialize(newCommit)), tobeMergedCommitId);
+        writeObject(COMMIT_GRAPH, commitGraph);
 
     }
 }

@@ -1,12 +1,9 @@
 package gitlet;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-
-import static gitlet.Utils.sha1;
 
 /**
  * Represents a gitlet commit object.
@@ -15,7 +12,6 @@ import static gitlet.Utils.sha1;
  */
 public class Commit implements Serializable {
     /**
-     * TODO: add instance variables here.
      *
      * List all instance variables of the Commit class here with a useful
      * comment above them describing what that variable represents and how that
@@ -43,7 +39,8 @@ public class Commit implements Serializable {
         this.nameToBlobMapping = new HashMap<>();
     }
 
-    public Commit(String message, Date timestamp, Map<String, String> nameToBlobMapping, String parentCommitId, Commit parentCommit) {
+    public Commit(String message, Date timestamp, Map<String, String> nameToBlobMapping,
+                  String parentCommitId, Commit parentCommit) {
         this.message = message;
         this.timestamp = timestamp;
         this.nameToBlobMapping = nameToBlobMapping;
@@ -51,7 +48,8 @@ public class Commit implements Serializable {
         this.parentCommit = parentCommit;
     }
 
-    public Commit(String message, Date timestamp, Map<String, String> nameToBlobMapping, String parentCommitId, String secondParentCommitId) {
+    public Commit(String message, Date timestamp, Map<String, String> nameToBlobMapping,
+                  String parentCommitId, String secondParentCommitId) {
         this.message = message;
         this.timestamp = timestamp;
         this.nameToBlobMapping = nameToBlobMapping;
@@ -69,13 +67,6 @@ public class Commit implements Serializable {
 
     public Map<String, String> getNameToBlobMapping() {
         return nameToBlobMapping;
-    }
-
-    public Commit getParentCommit() {
-        return parentCommit;
-    }
-    public Commit getSecondParentCommit() {
-        return secondParentCommit;
     }
 
     public String getParentCommitId() {

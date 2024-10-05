@@ -50,7 +50,8 @@ public class Repository {
 
     public static void init() {
         if (!GITLET_DIR.mkdir()) {
-            System.out.println("A Gitlet version-control system already exists in the current directory.");
+            System.out.println("A Gitlet version-control system already exists in the current " +
+                    "directory.");
             return;
         }
         COMMIT_DIR.mkdir();
@@ -121,7 +122,7 @@ public class Repository {
         for (Map.Entry<String, String> entry : staged4RemovalMap.entrySet()) {
             nameToBlobMapping.remove(entry.getKey());
         }
-        Commit newCommit = new Commit(message, new Date(), nameToBlobMapping, currentCommitId, currentCommit);
+        Commit newCommit = new Commit(message, new Date(), nameToBlobMapping, currentCommitId);
         commitHelper(newCommit);
         commitGraph = readObject(COMMIT_GRAPH, CommitGraph.class);
         commitGraph.addVertex(sha1(serialize(newCommit)));
@@ -175,11 +176,16 @@ public class Repository {
             System.out.println("===");
             System.out.println("commit " + currentCommitId);
             if (currentCommit.getSecondParentCommitId() != null) {
-                System.out.println("Merge: " + currentCommit.getParentCommitId().substring(0, 7) + " " + currentCommit.getSecondParentCommitId().substring(0, 7));
+                System.out.println("Merge: "
+                        + currentCommit.getParentCommitId().substring(0, 7)
+                        + " "
+                        + currentCommit.getSecondParentCommitId().substring(0, 7));
             }
             Formatter formatter = new Formatter(Locale.US);
             Date currentTimeStamp = currentCommit.getTimestamp();
-            String formattedTimeStamp = String.valueOf(formatter.format("%ta %tb %te %tT %tY %tz", currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp));
+            String formattedTimeStamp = String.valueOf(formatter.format("%ta %tb %te %tT %tY %tz"
+                    , currentTimeStamp, currentTimeStamp, currentTimeStamp, currentTimeStamp,
+                    currentTimeStamp, currentTimeStamp));
             System.out.println("Date: " + formattedTimeStamp);
             formatter.close();
             System.out.println(currentCommit.getMessage());
@@ -204,7 +210,7 @@ public class Repository {
             Date currentTimeStamp = currentCommit.getTimestamp();
             String formattedTimeStamp = String.valueOf(
                     formatter.format("%ta %tb %te %tT %tY %tz",
-                    currentTimeStamp, currentTimeStamp, currentTimeStamp,
+                            currentTimeStamp, currentTimeStamp, currentTimeStamp,
                             currentTimeStamp, currentTimeStamp, currentTimeStamp));
             System.out.println("Date: " + formattedTimeStamp);
             formatter.close();
@@ -302,7 +308,8 @@ public class Repository {
             System.out.println("File does not exist in that commit.");
             System.exit(0);
         }
-        writeContents(join(CWD, fileName), readContentsAsString(join(BLOB_DIR, nameToBlobMapping.get(fileName))));
+        writeContents(join(CWD, fileName), readContentsAsString(join(BLOB_DIR,
+                nameToBlobMapping.get(fileName))));
     }
 
     public static void checkoutBranch(String branchName) {
@@ -368,7 +375,8 @@ public class Repository {
         staged4AdditionMap = readObject(STAGING_ADDITION, TreeMap.class);
         for (String fileName : filesInWorkingDir) {
             if (!staged4AdditionMap.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName)) {
-                System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+                System.out.println("There is an untracked file in the way; delete it, or add and " +
+                        "commit it first.");
                 System.exit(0);
             }
         }
@@ -376,9 +384,11 @@ public class Repository {
         // and puts them in the working directory,
         // overwriting the versions of the files that are already there if they exist.
         for (Map.Entry<String, String> entries : checkedOutNameToBlobMapping.entrySet()) {
-            writeContents(join(CWD, entries.getKey()), readContentsAsString(join(BLOB_DIR, entries.getValue())));
+            writeContents(join(CWD, entries.getKey()), readContentsAsString(join(BLOB_DIR,
+                    entries.getValue())));
         }
-        // Any files that are tracked in the current branch but are not present in the checked-out branch are deleted
+        // Any files that are tracked in the current branch but are not present in the
+        // checked-out branch are deleted
         for (String fileName : filesInWorkingDir) {
             if (!checkedOutNameToBlobMapping.containsKey(fileName)) {
                 join(CWD, fileName).delete();
@@ -405,9 +415,7 @@ public class Repository {
         if (!branchHeadMap.containsKey(branchName)) {
             System.out.println("A branch with that name does not exist.");
             System.exit(0);
-        }
-        // attempting to merge a branch with itself
-        else if (branchName.equals(HEAD)) {
+        } else if (branchName.equals(HEAD)) { // attempting to merge a branch with itself
             System.out.println("Cannot merge a branch with itself.");
             System.exit(0);
         }
@@ -428,10 +436,13 @@ public class Repository {
         List<String> filesInWorkingDir = plainFilenamesIn(CWD);
         for (String fileName : filesInWorkingDir) {
             if (!staged4AdditionMap.containsKey(fileName) && !currentNameToBlobMapping.containsKey(fileName)) {
-                System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+                System.out.println("There is an untracked file in the way; delete it, or add and " +
+                        "commit it first.");
                 System.exit(0);
             }
         }
+
+        /* find LCA by Breadth First Search of the commit graph*/
         String latestCommonAncestorCommitId = "";
         commitGraph = readObject(COMMIT_GRAPH, CommitGraph.class);
 
@@ -446,7 +457,6 @@ public class Repository {
                 fringe.offer(w);
             }
         }
-
         Queue<Integer> secondFringe =
                 new LinkedList<>();
         secondFringe.offer(commitGraph.getVertexId(tobeMergedCommitId));
@@ -473,8 +483,10 @@ public class Repository {
             return;
         }
 
-        Commit latestCommonAncestorCommit = readObject(join(COMMIT_DIR, latestCommonAncestorCommitId), Commit.class);
-        Map<String, String> latestCommonAncestorNameToBlobMapping = latestCommonAncestorCommit.getNameToBlobMapping();
+        Commit latestCommonAncestorCommit = readObject(join(COMMIT_DIR,
+                latestCommonAncestorCommitId), Commit.class);
+        Map<String, String> latestCommonAncestorNameToBlobMapping =
+                latestCommonAncestorCommit.getNameToBlobMapping();
         Set<String> fileNames = new HashSet<>();
         fileNames.addAll(currentNameToBlobMapping.keySet());
         fileNames.addAll(tobeMergedNameToBlobMapping.keySet());
@@ -544,10 +556,12 @@ public class Repository {
                 String currentFileContent = "";
                 String tobeMergedFileContent = "";
                 if (currentNameToBlobMapping.containsKey(fileName)) {
-                    currentFileContent = readContentsAsString(join(BLOB_DIR, currentNameToBlobMapping.get(fileName)));
+                    currentFileContent = readContentsAsString(join(BLOB_DIR,
+                            currentNameToBlobMapping.get(fileName)));
                 }
                 if (tobeMergedNameToBlobMapping.containsKey(fileName)) {
-                    tobeMergedFileContent = readContentsAsString(join(BLOB_DIR, tobeMergedNameToBlobMapping.get(fileName)));
+                    tobeMergedFileContent = readContentsAsString(join(BLOB_DIR,
+                            tobeMergedNameToBlobMapping.get(fileName)));
                 }
                 writeContents(join(CWD, fileName), "<<<<<<< HEAD\n"
                         + currentFileContent
@@ -572,6 +586,7 @@ public class Repository {
         if (isMergeConflict) {
             System.out.println("Encountered a merge conflict.");
         }
+        /* Update the commit graph*/
         commitGraph.addVertex(sha1(serialize(newCommit)));
         commitGraph.addEdge(sha1(serialize(newCommit)), currentCommitId);
         commitGraph.addEdge(sha1(serialize(newCommit)), tobeMergedCommitId);

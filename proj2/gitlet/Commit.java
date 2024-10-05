@@ -29,8 +29,6 @@ public class Commit implements Serializable {
     private Map<String, String> nameToBlobMapping;
     private String parentCommitId;
     private String secondParentCommitId;
-    private transient Commit parentCommit;
-    private transient Commit secondParentCommit;
 
 
     public Commit(String message, Date timestamp) {
@@ -40,12 +38,11 @@ public class Commit implements Serializable {
     }
 
     public Commit(String message, Date timestamp, Map<String, String> nameToBlobMapping,
-                  String parentCommitId, Commit parentCommit) {
+                  String parentCommitId) {
         this.message = message;
         this.timestamp = timestamp;
         this.nameToBlobMapping = nameToBlobMapping;
         this.parentCommitId = parentCommitId;
-        this.parentCommit = parentCommit;
     }
 
     public Commit(String message, Date timestamp, Map<String, String> nameToBlobMapping,

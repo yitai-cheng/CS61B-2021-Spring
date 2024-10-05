@@ -28,7 +28,7 @@ public class CommitGraph implements Serializable {
 
     /* add a directed edge from vertex v to vertex w */
     public void addEdge(String commitId, String parentCommitId) {
-       adj.get(commitId2VertexIdMap.get(commitId)).add(commitId2VertexIdMap.get(parentCommitId));
+        adj.get(commitId2VertexIdMap.get(commitId)).add(commitId2VertexIdMap.get(parentCommitId));
     }
 
     public List<Integer> getAdj(int v) {
